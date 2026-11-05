@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Élan</title>
   <meta name="description" content="Suis ton poids et tes séances de sport, en local sur ton iPhone.">
-  <meta name="theme-color" content="#07080C">
+  <meta name="theme-color" content="#050506">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -44,6 +44,7 @@
       </header>
 
       <article class="card hero rise" id="hero">
+        <span class="badge" id="w-badge"></span>
         <div class="hero-main">
           <p class="label">Poids actuel</p>
           <div class="big-line"><span class="num num-xl" id="w-current"></span><span class="unit">kg</span></div>
@@ -70,7 +71,7 @@
           <span class="muted" id="rings-days"></span>
         </div>
         <div class="rings-row">
-          <div id="rings"></div>
+          <div class="rings-wrap"><div id="rings"></div><div class="rings-center" aria-hidden="true"><span class="num" id="rings-pct"></span><small>%</small></div></div>
           <ul class="ring-legend" id="ring-legend"></ul>
         </div>
       </article>
@@ -79,11 +80,13 @@
         <article class="card tile rise" style="--i:2">
           <p class="label">Séances</p>
           <div class="big-line"><span class="num num-lg" id="t-sessions"></span></div>
+          <div class="blocks" id="t-sessions-blocks" aria-hidden="true"></div>
           <p class="foot" id="t-sessions-foot"></p>
         </article>
         <article class="card tile rise" style="--i:3">
           <p class="label">Minutes de sport</p>
           <div class="big-line"><span class="num num-lg" id="t-minutes"></span></div>
+          <div class="blocks" id="t-minutes-blocks" aria-hidden="true"></div>
           <p class="foot" id="t-minutes-foot"></p>
         </article>
       </div>
@@ -153,7 +156,7 @@
       <div class="tabbar" id="tabbar" role="tablist">
         <span class="tab-thumb"></span>
         <button class="tab press" role="tab" data-tab="0" aria-label="Aujourd’hui">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.6"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M3.5 11.5 12 4l8.5 7.5"/><path d="M6 9.5V20h12V9.5"/></svg>
         </button>
         <button class="tab press" role="tab" data-tab="1" aria-label="Progression">
           <svg viewBox="0 0 24 24"><path d="M3.5 17.5 9 11l4 3.5 7.5-8.5"/><path d="M15.5 6h5v5"/></svg>

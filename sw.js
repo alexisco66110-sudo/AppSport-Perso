@@ -1,8 +1,8 @@
 // Service worker : l'app fonctionne hors ligne. Change VERSION à chaque mise en ligne.
-const VERSION = 'elan-v2';
+const VERSION = 'elan-v3';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/app.js', 'js/anim.js', 'js/charts.js', 'js/data.js', 'js/db.js',
+  'js/app.js', 'js/anim.js', 'js/calories.js', 'js/charts.js', 'js/data.js', 'js/db.js',
   'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
 ];
 

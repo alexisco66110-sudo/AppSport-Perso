@@ -503,7 +503,7 @@ export class Rings {
     this.defs = defs;
     const size = 148;
     const c = size / 2;
-    const stroke = 15;
+    const stroke = 12;
     const gap = 3;
     const svg = S('svg', { viewBox: `0 0 ${size} ${size}`, class: 'rings-svg', role: 'img' });
     this.svg = svg;

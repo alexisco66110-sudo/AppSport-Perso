@@ -6,13 +6,21 @@ import {
   dayKey, parseDay, fmtNum, fmtSigned, longDate, relativeDay,
   weightModel, sportModel, rangeStats, weekStats, currentWeight, demoData,
 } from './data.js';
+import { INTENSITIES, MET, kcal, metFor } from './calories.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const TYPES = {
-  course: ['Course', '🏃'], muscu: ['Muscu', '🏋️'], velo: ['Vélo', '🚴'], natation: ['Natation', '🏊'],
-  marche: ['Marche', '🚶'], yoga: ['Yoga', '🧘'], hiit: ['HIIT', '🔥'], autre: ['Autre', '✨'],
+  course: ['Course', '<svg viewBox="0 0 24 24"><circle cx="14.5" cy="4.5" r="1.8"/><path d="M6 11l3.5-3.5 4 1.5-2.5 5 3.5 2.5V21"/><path d="M11 14.5 9 18H5"/><path d="M13.5 9l2.5 3H20"/></svg>'],
+  muscu: ['Muscu', '<svg viewBox="0 0 24 24"><path d="M8 8v8M16 8v8M8 12h8M4.5 9.5v5M19.5 9.5v5"/></svg>'],
+  kickboxing: ['Kick boxing', '<svg viewBox="0 0 24 24"><path d="M7 20v-4.5C5.2 14 4.5 12 4.5 10A5.5 5.5 0 0 1 10 4.5h3A5.5 5.5 0 0 1 18.5 10c0 2.5-1 4-2.5 5.5V20z"/><path d="M7 17.5h9M4.5 10.5c2 .2 3.5 1 4 3"/></svg>'],
+  velo: ['Vélo', '<svg viewBox="0 0 24 24"><circle cx="6" cy="16.5" r="3.5"/><circle cx="18" cy="16.5" r="3.5"/><path d="M6 16.5 9.5 9.5h6L18 16.5M9.5 9.5l3 7H6M15.5 9.5 15 6.5h-2.5"/></svg>'],
+  natation: ['Natation', '<svg viewBox="0 0 24 24"><circle cx="16.5" cy="7" r="1.8"/><path d="M5 12l5-3.5 3 2.5"/><path d="M3 16c1.5 0 1.5 1 3 1s1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1"/></svg>'],
+  marche: ['Marche', '<svg viewBox="0 0 24 24"><circle cx="12.5" cy="4.5" r="1.8"/><path d="M12 8.5 9 11v3.5M12 8.5l1 5.5-2.5 7M13 14l3 7M12.5 9l3.5 3"/></svg>'],
+  yoga: ['Yoga', '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.8"/><path d="M12 8.5V14M12 9.5 7 13M12 9.5l5 3.5M12 14l-6.5 5h13z"/></svg>'],
+  hiit: ['HIIT', '<svg viewBox="0 0 24 24"><path d="M13 3 5.5 13.5H11l-1 7.5 8-11h-5.5z"/></svg>'],
+  autre: ['Autre', '<svg viewBox="0 0 24 24"><path d="M12 4l2 5.5 5.5 2-5.5 2L12 19l-2-5.5-5.5-2 5.5-2z"/></svg>'],
 };
 const DEFAULTS = { goalSessions: 4, goalMinutes: 150, goalDays: 4, direction: 'lose', theme: 'dark' };
 const SCALE_ICON = '<svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="5"/><path d="M8 9.2a5.6 5.6 0 0 1 8 0l-2.4 2.3h-3.2z"/></svg>';
@@ -35,12 +43,12 @@ async function saveSetting(key, value) {
 
 /* ---------- Vues ---------- */
 const od = {};
-['w-current', 't-sessions', 't-minutes', 's-avg', 's-min', 's-max', 's-minutes', 's-sessions'].forEach((id) => { od[id] = new Odometer($(`#${id}`)); });
+['w-current', 'rings-pct', 't-sessions', 't-minutes', 's-avg', 's-min', 's-max', 's-minutes', 's-sessions'].forEach((id) => { od[id] = new Odometer($(`#${id}`)); });
 
 const RING_DEFS = [
-  { key: 'sessions', name: 'Séances', a: '#E83E93', b: '#FF7FBE', unit: '' },
-  { key: 'minutes', name: 'Minutes', a: '#66A616', b: '#B6F23C', unit: ' min' },
-  { key: 'days', name: 'Jours actifs', a: '#12A5BE', b: '#5FE3F2', unit: '' },
+  { key: 'sessions', name: 'Séances', a: '#E5182F', b: '#E5182F', unit: '' },
+  { key: 'minutes', name: 'Minutes', a: 'var(--ring-2)', b: 'var(--ring-2)', unit: ' min' },
+  { key: 'days', name: 'Jours actifs', a: '#8E8E96', b: '#8E8E96', unit: '' },
 ];
 const rings = new Rings($('#rings'), RING_DEFS);
 const weightChart = new WeightChart($('#weight-chart'));
@@ -48,7 +56,7 @@ const sportChart = new BarChart($('#sport-chart'));
 
 function renderToday(animate = true) {
   const now = new Date();
-  $('#today-date').textContent = longDate(dayKey(now));
+  $('#today-date').textContent = longDate(dayKey(now)).replace(' ', ' · ');
   const hasAny = state.weights.length || state.workouts.length;
   const cur = currentWeight(state.weights, now);
   $('#hero').hidden = !cur;
@@ -59,12 +67,15 @@ function renderToday(animate = true) {
     const box = $('#w-delta');
     if (cur.delta == null) {
       box.hidden = true;
+      $('#w-badge').hidden = true;
     } else {
       box.hidden = false;
       const d = Math.round(cur.delta * 10) / 10;
       box.dataset.dir = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
       box.dataset.tone = deltaTone(d);
       $('#w-delta-text').textContent = `${fmtSigned(d)} kg sur ${cur.since} j`;
+      $('#w-badge').hidden = false;
+      $('#w-badge').textContent = d > 0 ? 'En hausse' : d < 0 ? 'En baisse' : 'Stable';
     }
     drawSpark($('#w-spark'), cur.spark.map((p) => p.value));
   }
@@ -79,9 +90,14 @@ function renderToday(animate = true) {
   $('#ring-legend').innerHTML = RING_DEFS.map((r) => `
     <li><i style="background:${r.a}"></i><span class="rl-name">${r.name}</span>
     <span class="rl-val">${fmtNum(vals[r.key][0])}<small> / ${fmtNum(vals[r.key][1])}${r.unit}</small></span></li>`).join('');
+  const ratios = RING_DEFS.map((r) => Math.min(vals[r.key][0] / vals[r.key][1], 1));
+  od['rings-pct'].set(fmtNum(Math.round((ratios.reduce((a, b) => a + b, 0) / ratios.length) * 100)), { roll: animate });
   const left = 7 - ((now.getDay() + 6) % 7) - 1;
   $('#rings-days').textContent = left === 0 ? 'Dernier jour' : `${left} j restant${left > 1 ? 's' : ''}`;
 
+  const blockCount = Math.min(s.goalSessions, 10);
+  renderBlocks($('#t-sessions-blocks'), Math.round((week.sessions / s.goalSessions) * blockCount), blockCount);
+  renderBlocks($('#t-minutes-blocks'), Math.round((week.minutes / s.goalMinutes) * 8), 8);
   od['t-sessions'].set(fmtNum(week.sessions), { roll: animate, delay: 80 });
   od['t-minutes'].set(fmtNum(week.minutes), { roll: animate, delay: 140 });
   $('#t-sessions-foot').textContent = `Sem. dernière : ${fmtNum(week.prevSessions)}`;
@@ -90,6 +106,10 @@ function renderToday(animate = true) {
   const recent = allEntries().slice(0, 4);
   $('#recent-card').hidden = !recent.length;
   $('#recent').innerHTML = recent.map((e) => rowHtml(e, true)).join('');
+}
+
+function renderBlocks(host, filled, total) {
+  host.innerHTML = Array.from({ length: total }, (_, i) => `<i class="block${i < filled ? ' on' : ''}" style="--i:${i}"></i>`).join('');
 }
 
 function deltaTone(d) {
@@ -130,15 +150,16 @@ function rowHtml(e, showDay = false) {
       <span class="row-main"><div class="row-title">Pesée</div>${day ? `<div class="row-sub">${esc(day)}</div>` : ''}</span>
       <span class="row-val">${fmtNum(e.value, 1)} kg</span></button></li>`;
   }
-  const [name, emoji] = TYPES[e.type] || TYPES.autre;
+  const [name, icon] = TYPES[e.type] || TYPES.autre;
+  const burn = kcal(e, state.weights);
   const parts = [];
   if (day) parts.push(day);
   if (e.distance) parts.push(`${fmtNum(e.distance, e.distance % 1 ? 1 : 0)} km`);
   if (e.load) parts.push(`${fmtNum(e.load, e.load % 1 ? 1 : 0)} kg`);
   return `<li><button class="row press" data-kind="workout" data-id="${esc(e.id)}">
-    <span class="row-ico">${emoji}</span>
+    <span class="row-ico">${icon}</span>
     <span class="row-main"><div class="row-title">${esc(name)}</div>${parts.length ? `<div class="row-sub">${esc(parts.join(' · '))}</div>` : ''}</span>
-    <span class="row-val">${fmtNum(e.duration)} min</span></button></li>`;
+    <span class="row-val">${fmtNum(e.duration)} min${burn != null ? `<small>≈ ${fmtNum(burn)} kcal</small>` : ''}</span></button></li>`;
 }
 
 function renderHistory() {
@@ -199,7 +220,7 @@ tabs.forEach((t) => t.addEventListener('click', () => {
 (function swipe() {
   let startX = 0; let startY = 0; let id = null; let dragging = false; let width = 1;
   views.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'touch' || e.target.closest('.chart, .seg, .chips, input')) return;
+    if (e.pointerType !== 'touch' || e.target.closest('.chart, .seg, input')) return;
     id = e.pointerId; startX = e.clientX; startY = e.clientY; dragging = false; width = innerWidth;
   });
   views.addEventListener('pointermove', (e) => {
@@ -399,33 +420,54 @@ function weightForm(root, entry) {
 function workoutForm(root, entry) {
   const lastW = [...state.workouts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
   let type = entry ? entry.type : lastW?.type || 'course';
+  let intensity = entry?.intensity || 'mid';
   const initial = entry ? entry.duration : lastW?.duration || 30;
   root.innerHTML = `
-    <div class="chips" id="f-types">${Object.entries(TYPES).map(([k, [n, em]]) => `<button class="chip press" data-type="${k}" aria-pressed="${k === type}"><span>${em}</span>${n}</button>`).join('')}</div>
+    <div class="type-grid" id="f-types">${Object.entries(TYPES).map(([k, [n, icon]]) => `<button class="type-tile press" data-type="${k}" aria-pressed="${k === type}">${icon}<span>${n}</span></button>`).join('')}</div>
     <div class="stepper">
       <button class="press" id="d-minus" aria-label="Moins 5 minutes">−</button>
       <div class="stepper-val"><input class="short" id="f-duration" inputmode="numeric" autocomplete="off" aria-label="Durée en minutes" value="${fmtNum(initial)}"><span>min</span></div>
       <button class="press" id="d-plus" aria-label="Plus 5 minutes">+</button>
+    </div>
+    <div class="seg seg-solid" id="f-intensity" aria-label="Intensité">
+      <span class="seg-thumb"></span>
+      ${Object.entries(INTENSITIES).map(([k, n]) => `<button class="press" data-value="${k}">${n}</button>`).join('')}
     </div>
     <div class="field-pair">
       <div class="field"><label for="f-distance">Distance</label><input id="f-distance" inputmode="decimal" autocomplete="off" placeholder="–" value="${entry?.distance ? fmtNum(entry.distance, entry.distance % 1 ? 1 : 0) : ''}"><em>km</em></div>
       <div class="field"><label for="f-load">Charge</label><input id="f-load" inputmode="decimal" autocomplete="off" placeholder="–" value="${entry?.load ? fmtNum(entry.load, entry.load % 1 ? 1 : 0) : ''}"><em>kg</em></div>
     </div>
     ${dateField(entry ? entry.date : dayKey())}
+    <p class="estimate" id="f-est"></p>
     ${footButtons(entry)}`;
   const chips = $('#f-types', root);
+  const input = $('#f-duration', root);
+  const estimate = () => {
+    const draft = {
+      type, intensity, duration: parseNum(input.value), date: $('#f-date', root).value || dayKey(),
+      distance: parseNum($('#f-distance', root).value),
+    };
+    const burn = kcal(draft, state.weights);
+    $('#f-est', root).textContent = burn == null
+      ? 'Ajoute une pesée pour estimer les calories.'
+      : `≈ ${fmtNum(burn)} kcal estimées · MET ${fmtNum(metFor(draft), 1)}`;
+  };
   chips.addEventListener('click', (e) => {
-    const b = e.target.closest('.chip');
+    const b = e.target.closest('.type-tile');
     if (!b) return;
     type = b.dataset.type;
-    chips.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+    chips.querySelectorAll('.type-tile').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+    estimate();
   });
-  const input = $('#f-duration', root);
+  bindSeg($('#f-intensity', root), intensity, (v) => { intensity = v; estimate(); });
+  ['#f-duration', '#f-distance', '#f-date'].forEach((s) => $(s, root).addEventListener('input', estimate));
   const step = (d) => {
     const v = (parseNum(input.value) ?? initial) + d;
     input.value = String(Math.max(5, Math.round(v / 5) * 5));
     navigator.vibrate?.(4);
+    estimate();
   };
+  estimate();
   $('#d-minus', root).onclick = () => step(-5);
   $('#d-plus', root).onclick = () => step(5);
   $('#f-save', root).onclick = async (e) => {
@@ -439,7 +481,7 @@ function workoutForm(root, entry) {
     if (distRaw && (distance == null || distance < 0)) return formError(root, 'La distance doit être un nombre.', $('#f-distance', root));
     if (loadRaw && (load == null || load < 0)) return formError(root, 'La charge doit être un nombre.', $('#f-load', root));
     if (!date) return formError(root, 'Choisis une date.', $('#f-date', root));
-    const base = { type, duration: Math.round(duration), distance: distance || null, load: load || null, date };
+    const base = { type, intensity, duration: Math.round(duration), distance: distance || null, load: load || null, date };
     const rec = entry ? { ...strip(entry), ...base } : { id: db.newId(), createdAt: Date.now(), ...base };
     await commit('workouts', rec, e.currentTarget);
   };
@@ -544,6 +586,8 @@ function openSettings() {
         <button class="press" data-value="dark">Sombre</button>
         <button class="press" data-value="light">Clair</button>
       </div>
+      <p class="set-title">Comprendre</p>
+      <div class="set-group"><button class="set-btn" id="open-guide">Guide des calories</button></div>
       <p class="set-title">Mes données</p>
       <div class="set-group">
         <button class="set-btn" id="do-export">Exporter en JSON</button>
@@ -564,11 +608,28 @@ function openSettings() {
     num('#g-s', 'goalSessions'); num('#g-m', 'goalMinutes'); num('#g-d', 'goalDays');
     bindSeg($('#set-dir', root), s.direction, (v) => { saveSetting('direction', v); if (state.tab === 0) renderToday(false); });
     bindSeg($('#set-theme', root), s.theme, (v) => { saveSetting('theme', v); applyTheme(); });
+    $('#open-guide', root).onclick = openGuide;
     $('#do-export', root).onclick = exportData;
     $('#do-import', root).onclick = () => $('#import-file').click();
     $('#do-wipe', root).onclick = wipeAll;
     if (hasDemo) $('#do-undemo', root).onclick = removeDemo;
     else $('#do-demo', root).onclick = loadDemo;
+  });
+}
+
+function openGuide() {
+  const last = currentWeight(state.weights);
+  const kg = last ? last.value : 75;
+  openSheet((root) => {
+    root.innerHTML = `
+      <h2 class="sheet-title">Guide des calories</h2>
+      <p class="set-note guide-note">Calories brûlées par heure pour ${fmtNum(kg, 1)} kg${last ? '' : ' (poids d’exemple)'}, repos inclus.</p>
+      <table class="guide">
+        <thead><tr><th scope="col">Sport</th>${Object.values(INTENSITIES).map((n) => `<th scope="col">${n}</th>`).join('')}</tr></thead>
+        <tbody>${Object.entries(TYPES).map(([k, [n]]) => `<tr><th scope="row">${n}</th>${['low', 'mid', 'high'].map((i) => `<td>${fmtNum(Math.round(MET[k][i][0] * kg))}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+      <p class="set-note guide-note">Calcul : MET × poids (kg) × durée (h). Si tu saisis une distance en course, vélo ou marche, la vitesse réelle remplace l’intensité.</p>
+      <p class="set-note guide-note">C’est une moyenne, pas une mesure : ton chiffre réel peut être assez différent. Valeurs issues du <a href="https://pacompendium.com/" target="_blank" rel="noopener">Compendium of Physical Activities 2024</a>.</p>`;
   });
 }
 
@@ -609,6 +670,7 @@ function sanitizeWorkout(r) {
   if (typeof r.duration !== 'number' || !(r.duration >= 1 && r.duration <= 1440)) return null;
   return {
     id: r.id, date: r.date, duration: r.duration, type: TYPES[r.type] ? r.type : 'autre',
+    intensity: INTENSITIES[r.intensity] ? r.intensity : 'mid',
     distance: posOrNull(r.distance), load: posOrNull(r.load),
     createdAt: Number(r.createdAt) || parseDay(r.date).getTime(), ...(r.demo ? { demo: true } : {}),
   };

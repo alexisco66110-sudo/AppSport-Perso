@@ -185,7 +185,7 @@ export function demoData(newId, today = new Date()) {
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const weights = [];
   const workouts = [];
-  const types = [['course', 35, 6.5, null], ['muscu', 55, null, 60], ['velo', 60, 22, null], ['course', 40, 7.5, null], ['muscu', 50, null, 65], ['yoga', 30, null, null], ['natation', 40, 1.5, null]];
+  const types = [['course', 35, 6.5, null], ['muscu', 55, null, 60], ['velo', 60, 22, null], ['course', 40, 7.5, null], ['muscu', 50, null, 65], ['kickboxing', 60, null, null], ['natation', 40, 1.5, null]];
   for (let i = 300; i >= 0; i--) {
     const day = addDays(today, -i);
     const date = dayKey(day);

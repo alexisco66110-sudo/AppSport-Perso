@@ -27,9 +27,9 @@ const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
 const RINGS = [
-  { R: 0.335, sweep: 0.80, a: hex('#FF4FA3'), b: hex('#FF8AC4') },
-  { R: 0.235, sweep: 0.66, a: hex('#9BE22D'), b: hex('#C9F75C') },
-  { R: 0.135, sweep: 0.87, a: hex('#2BC8E0'), b: hex('#7DEBF5') },
+  { R: 0.335, sweep: 0.80, a: hex('#E5182F'), b: hex('#E5182F') },
+  { R: 0.235, sweep: 0.66, a: hex('#F4F4F5'), b: hex('#F4F4F5') },
+  { R: 0.135, sweep: 0.87, a: hex('#8E8E96'), b: hex('#8E8E96') },
 ];
 const STROKE = 0.078;
 
@@ -68,7 +68,7 @@ function drawRings(buf, W, H, cx, cy, s) {
 
 function icon(size, scale = 1) {
   const buf = Buffer.alloc(size * size * 3);
-  const top = hex('#1B1D2B'), bottom = hex('#07080C');
+  const top = hex('#191012'), bottom = hex('#050506');
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const c = mix(top, bottom, clamp01((x * 0.25 + y * 0.75) / size));
@@ -82,7 +82,7 @@ function icon(size, scale = 1) {
 
 function splash(W, H) {
   const buf = Buffer.alloc(W * H * 3);
-  const bg = hex('#07080C');
+  const bg = hex('#050506');
   for (let i = 0; i < buf.length; i += 3) { buf[i] = bg[0]; buf[i + 1] = bg[1]; buf[i + 2] = bg[2]; }
   drawRings(buf, W, H, W / 2, H / 2, W * 0.42);
   return png(W, H, buf);

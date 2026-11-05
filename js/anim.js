@@ -122,7 +122,7 @@ export function confetti(canvas, originX, originY) {
   canvas.height = H * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-  const colors = ['#FF4FA3', '#B6F23C', '#3CD7E8', '#5AA9FF', '#FFD166'];
+  const colors = ['#E5182F', '#FFFFFF', '#FF5A6E', '#8E8E96', '#E5182F'];
   const parts = Array.from({ length: 34 }, (_, i) => {
     const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.9;
     const v = 260 + Math.random() * 360;

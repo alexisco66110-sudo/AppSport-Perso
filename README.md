@@ -10,3 +10,7 @@ PWA iPhone de suivi du poids et du sport. Aucune dépendance ni compilation : ce
 
 Le service worker est désactivé sur localhost, sauf avec `?sw=1`.
 Les données restent dans l'IndexedDB de l'appareil. Elles ne sont jamais envoyées ailleurs.
+
+## Calories
+
+Le calcul et le tableau par sport sont dans [docs/CALORIES.md](docs/CALORIES.md).
