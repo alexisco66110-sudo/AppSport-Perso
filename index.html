@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Élan</title>
+  <meta name="description" content="Suis ton poids et tes séances de sport, en local sur ton iPhone.">
+  <meta name="theme-color" content="#07080C">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Élan">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="apple-touch-startup-image" media="(device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2)" href="icons/splash-750x1334.png">
+  <link rel="apple-touch-startup-image" media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2)" href="icons/splash-828x1792.png">
+  <link rel="apple-touch-startup-image" media="(device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3)" href="icons/splash-1125x2436.png">
+  <link rel="apple-touch-startup-image" media="(device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3)" href="icons/splash-1170x2532.png">
+  <link rel="apple-touch-startup-image" media="(device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3)" href="icons/splash-1179x2556.png">
+  <link rel="apple-touch-startup-image" media="(device-width:402px) and (device-height:874px) and (-webkit-device-pixel-ratio:3)" href="icons/splash-1206x2622.png">
+  <link rel="apple-touch-startup-image" media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:3)" href="icons/splash-1242x2688.png">
+  <link rel="apple-touch-startup-image" media="(device-width:428px) and (device-height:926px) and (-webkit-device-pixel-ratio:3)" href="icons/splash-1284x2778.png">
+  <link rel="apple-touch-startup-image" media="(device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3)" href="icons/splash-1290x2796.png">
+  <link rel="apple-touch-startup-image" media="(device-width:440px) and (device-height:956px) and (-webkit-device-pixel-ratio:3)" href="icons/splash-1320x2868.png">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+
+  <main class="views" id="views">
+    <!-- AUJOURD'HUI -->
+    <section class="view" id="view-today" aria-label="Aujourd’hui">
+      <header class="head">
+        <div>
+          <p class="eyebrow" id="today-date"></p>
+          <h1>Aujourd’hui</h1>
+        </div>
+        <button class="icon-btn press" id="open-settings" aria-label="Réglages">
+          <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+        </button>
+      </header>
+
+      <article class="card hero rise" id="hero">
+        <div class="hero-main">
+          <p class="label">Poids actuel</p>
+          <div class="big-line"><span class="num num-xl" id="w-current"></span><span class="unit">kg</span></div>
+          <div class="delta" id="w-delta">
+            <svg class="delta-arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg>
+            <span id="w-delta-text"></span>
+          </div>
+        </div>
+        <div class="spark" id="w-spark" aria-hidden="true"></div>
+      </article>
+
+      <article class="card empty-hero rise" id="hero-empty" hidden>
+        <h2>Bienvenue sur Élan</h2>
+        <p>Ajoute ta première pesée ou ta première séance pour voir tes chiffres s’animer.</p>
+        <div class="row-btns">
+          <button class="btn btn-primary press" id="empty-add">Ajouter</button>
+          <button class="btn press" id="empty-demo">Voir une démo</button>
+        </div>
+      </article>
+
+      <article class="card rings-card rise" style="--i:1">
+        <div class="card-head">
+          <h2>Objectif de la semaine</h2>
+          <span class="muted" id="rings-days"></span>
+        </div>
+        <div class="rings-row">
+          <div id="rings"></div>
+          <ul class="ring-legend" id="ring-legend"></ul>
+        </div>
+      </article>
+
+      <div class="tiles">
+        <article class="card tile rise" style="--i:2">
+          <p class="label">Séances</p>
+          <div class="big-line"><span class="num num-lg" id="t-sessions"></span></div>
+          <p class="foot" id="t-sessions-foot"></p>
+        </article>
+        <article class="card tile rise" style="--i:3">
+          <p class="label">Minutes de sport</p>
+          <div class="big-line"><span class="num num-lg" id="t-minutes"></span></div>
+          <p class="foot" id="t-minutes-foot"></p>
+        </article>
+      </div>
+
+      <article class="card rise" style="--i:4" id="recent-card">
+        <div class="card-head"><h2>Dernières activités</h2></div>
+        <ul class="rows" id="recent"></ul>
+      </article>
+    </section>
+
+    <!-- PROGRESSION -->
+    <section class="view" id="view-progress" aria-label="Progression">
+      <header class="head"><h1>Progression</h1></header>
+
+      <div class="sticky-seg">
+        <div class="seg" id="range" role="tablist" aria-label="Période" data-count="3">
+          <span class="seg-thumb"></span>
+          <button class="press" role="tab" data-value="week">Semaine</button>
+          <button class="press" role="tab" data-value="month">Mois</button>
+          <button class="press" role="tab" data-value="year">Année</button>
+        </div>
+      </div>
+
+      <article class="card rise">
+        <div class="card-head">
+          <h2>Poids</h2>
+          <div class="legend">
+            <span><i class="sw sw-line"></i>Poids</span>
+            <span><i class="sw sw-dash"></i>Moy. 7 j</span>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div><p class="label">Moyenne</p><span class="num num-md" id="s-avg"></span></div>
+          <div><p class="label">Minimum</p><span class="num num-md" id="s-min"></span></div>
+          <div><p class="label">Maximum</p><span class="num num-md" id="s-max"></span></div>
+        </div>
+        <div id="weight-chart"></div>
+      </article>
+
+      <article class="card rise" style="--i:1">
+        <div class="card-head"><h2>Sport</h2><span class="muted">minutes</span></div>
+        <div class="stat-row stat-row-2">
+          <div><p class="label">Total</p><span class="num num-md" id="s-minutes"></span></div>
+          <div><p class="label">Séances</p><span class="num num-md" id="s-sessions"></span></div>
+        </div>
+        <div id="sport-chart"></div>
+      </article>
+    </section>
+
+    <!-- HISTORIQUE -->
+    <section class="view" id="view-history" aria-label="Historique">
+      <header class="head"><h1>Historique</h1></header>
+      <div class="sticky-seg">
+        <div class="seg" id="hist-filter" role="tablist" aria-label="Filtre" data-count="3">
+          <span class="seg-thumb"></span>
+          <button class="press" role="tab" data-value="all">Tout</button>
+          <button class="press" role="tab" data-value="weight">Poids</button>
+          <button class="press" role="tab" data-value="workout">Séances</button>
+        </div>
+      </div>
+      <div id="history"></div>
+    </section>
+  </main>
+
+  <nav class="dock" aria-label="Navigation">
+    <div class="tabbar card-glass" id="tabbar" role="tablist">
+      <span class="tab-thumb"></span>
+      <button class="tab press" role="tab" data-tab="0" aria-label="Aujourd’hui">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/></svg><span>Aujourd’hui</span>
+      </button>
+      <button class="tab press" role="tab" data-tab="1" aria-label="Progression">
+        <svg viewBox="0 0 24 24"><path d="M3.5 17.5 9 11l4 3.5 7.5-8.5"/><path d="M15.5 6h5v5"/></svg><span>Progression</span>
+      </button>
+      <button class="tab press" role="tab" data-tab="2" aria-label="Historique">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>Historique</span>
+      </button>
+    </div>
+    <button class="fab press" id="fab" aria-label="Ajouter une pesée ou une séance">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </nav>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden>
+    <div class="grab" id="grab"><span></span></div>
+    <div class="sheet-body" id="sheet-body"></div>
+    <div class="success" id="success" aria-hidden="true">
+      <div class="success-disc">
+        <svg viewBox="0 0 52 52"><path d="M14 27.5 22.5 36 38.5 18"/></svg>
+      </div>
+      <p>Enregistré</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+  <input type="file" id="import-file" accept="application/json,.json" hidden>
+</body>
+</html>
