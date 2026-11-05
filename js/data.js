@@ -107,7 +107,10 @@ export function sportModel(workouts, range, today = new Date()) {
       const key = dayKey(m).slice(0, 7);
       const list = workouts.filter((w) => w.date.startsWith(key));
       const title = fmtMonth.format(m);
-      bars.push({ v: list.reduce((s, w) => s + w.duration, 0), count: list.length, title: title[0].toUpperCase() + title.slice(1) });
+      bars.push({
+        v: list.reduce((s, w) => s + w.duration, 0), count: list.length, title: title[0].toUpperCase() + title.slice(1),
+        from: dayKey(m), to: dayKey(new Date(m.getFullYear(), m.getMonth() + 1, 0)),
+      });
       labels.push({ i, text: MONTH_LETTERS[m.getMonth()] });
     }
   } else {
@@ -121,12 +124,22 @@ export function sportModel(workouts, range, today = new Date()) {
     for (let i = 0; i < n; i++) {
       const d = addDays(end, i - n + 1);
       const e = byDay.get(dayKey(d)) || { v: 0, count: 0 };
-      bars.push({ ...e, title: fmtWeekday.format(d).replace(/\./g, '') });
+      bars.push({ ...e, title: fmtWeekday.format(d).replace(/\./g, ''), from: dayKey(d), to: dayKey(d) });
       if (range === 'week') labels.push({ i, text: WEEK_LETTERS[d.getDay()] });
       else if ((i - 1) % 7 === 0) labels.push({ i, text: fmtShort.format(d).replace('.', '') });
     }
   }
   return { bars, labels };
+}
+
+// Période affichée par le filtre Semaine / Mois / Année.
+export function rangeBounds(range, today = new Date()) {
+  const end = parseDay(dayKey(today));
+  if (range === 'year') {
+    return { from: dayKey(new Date(end.getFullYear(), end.getMonth() - 11, 1)), to: dayKey(end), label: '12 derniers mois' };
+  }
+  const days = RANGE_DAYS[range];
+  return { from: dayKey(addDays(end, -(days - 1))), to: dayKey(end), label: `${days} derniers jours` };
 }
 
 export function rangeStats(weights, workouts, range, today = new Date()) {

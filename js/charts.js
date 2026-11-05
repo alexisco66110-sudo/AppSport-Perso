@@ -64,9 +64,10 @@ function attachPicker(host, svg, onPick, onClear) {
     const r = svg.getBoundingClientRect();
     onPick(e.clientX - r.left);
   };
-  host.addEventListener('pointerdown', (e) => { host.dataset.active = '1'; pick(e); });
+  const onBubble = (e) => !!e.target.closest?.('.bubble');
+  host.addEventListener('pointerdown', (e) => { if (onBubble(e)) return; host.dataset.active = '1'; pick(e); });
   host.addEventListener('pointermove', (e) => {
-    if (e.pointerType === 'mouse' || host.dataset.active) pick(e);
+    if (!onBubble(e) && (e.pointerType === 'mouse' || host.dataset.active)) pick(e);
   });
   host.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { delete host.dataset.active; onClear(); } });
   document.addEventListener('pointerdown', (e) => { if (!host.contains(e.target)) { delete host.dataset.active; onClear(); } });
@@ -74,11 +75,11 @@ function attachPicker(host, svg, onPick, onClear) {
   host.addEventListener('pointercancel', () => { delete host.dataset.active; });
 }
 
-function placeBubble(bubble, hostW, x, y) {
+function placeBubble(bubble, hostW, x, y, minTop = 0) {
   const w = bubble.offsetWidth;
   const h = bubble.offsetHeight;
   const bx = clamp(x - w / 2, 0, hostW - w);
-  const by = y - h - 14 < 0 ? y + 14 : y - h - 14;
+  const by = y - h - 14 < minTop ? y + 14 : y - h - 14;
   bubble.style.transform = `translate3d(${bx}px, ${by}px, 0)`;
   bubble.firstElementChild.style.transformOrigin = `${clamp(x - bx, 0, w)}px ${by < y ? '100%' : '0%'}`;
   bubble.classList.add('show');
@@ -323,14 +324,19 @@ const barPath = (x, base, w, h) => {
 };
 
 export class BarChart {
-  constructor(host, { height = 200 } = {}) {
+  constructor(host, { height = 200, onOpen = null } = {}) {
     this.host = host;
+    this.onOpen = onOpen;
     this.H = height;
     this.id = `bc${uid++}`;
     host.classList.add('chart');
     host.style.height = `${height}px`;
     host.innerHTML = `<div class="bubble"><div class="bubble-in"></div></div>`;
     this.bubble = host.firstElementChild;
+    this.bubble.addEventListener('click', () => {
+      const b = this.model?.bars[this.pickedI];
+      if (b?.count && this.onOpen) this.onOpen(b);
+    });
     const svg = this.svg = S('svg', { class: 'chart-svg', role: 'img' });
     host.prepend(svg);
     const g = S('linearGradient', { id: `${this.id}g`, x1: 0, y1: 0, x2: 0, y2: 1 }, S('defs', {}, svg));
@@ -483,8 +489,10 @@ export class BarChart {
     this.barsG.classList.add('dim');
     this.els.forEach((el, j) => el.classList.toggle('on', j === i));
     const sessions = b.count ? `${b.count} séance${b.count > 1 ? 's' : ''}` : 'Repos';
-    this.bubble.firstElementChild.innerHTML = `<b>${fmtNum(b.v)} min</b><span>${b.title}</span><em>${sessions}</em>`;
-    placeBubble(this.bubble, this.W, g[i].x + g[i].w / 2, this.base - g[i].h);
+    const canOpen = !!b.count && !!this.onOpen;
+    this.bubble.classList.toggle('tap', canOpen);
+    this.bubble.firstElementChild.innerHTML = `<b>${fmtNum(b.v)} min</b><span>${b.title}</span><em>${sessions}</em>${canOpen ? '<u>Voir le détail ›</u>' : ''}`;
+    placeBubble(this.bubble, this.W, g[i].x + g[i].w / 2, this.base - g[i].h, -90);
     navigator.vibrate?.(4);
   }
 

@@ -1,5 +1,5 @@
 // Service worker : l'app fonctionne hors ligne. Change VERSION à chaque mise en ligne.
-const VERSION = 'elan-v3';
+const VERSION = 'elan-v4';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/anim.js', 'js/calories.js', 'js/charts.js', 'js/data.js', 'js/db.js',

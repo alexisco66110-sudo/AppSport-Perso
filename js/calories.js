@@ -21,6 +21,8 @@ const BY_SPEED = {
   marche: [[4.5, 3.0], [5.6, 3.8], [6.4, 4.8], [Infinity, 5.5]],
 };
 
+export const usesSpeed = (w) => !!BY_SPEED[w.type] && w.distance > 0 && w.duration > 0;
+
 export function metFor(w) {
   const table = BY_SPEED[w.type];
   if (table && w.distance > 0 && w.duration > 0) {

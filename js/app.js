@@ -4,9 +4,9 @@ import { Odometer, confetti, installSpring, reduced } from './anim.js';
 import { WeightChart, BarChart, Rings, drawSpark } from './charts.js';
 import {
   dayKey, parseDay, fmtNum, fmtSigned, longDate, relativeDay,
-  weightModel, sportModel, rangeStats, weekStats, currentWeight, demoData,
+  weightModel, sportModel, rangeBounds, rangeStats, weekStats, currentWeight, demoData,
 } from './data.js';
-import { INTENSITIES, MET, kcal, metFor } from './calories.js';
+import { INTENSITIES, MET, kcal, metFor, usesSpeed, weightOn } from './calories.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -52,7 +52,9 @@ const RING_DEFS = [
 ];
 const rings = new Rings($('#rings'), RING_DEFS);
 const weightChart = new WeightChart($('#weight-chart'));
-const sportChart = new BarChart($('#sport-chart'));
+const sportChart = new BarChart($('#sport-chart'), {
+  onOpen: (b) => { sportChart.clearPick(); openSessionsPage(b.from, b.to, b.title); },
+});
 
 function renderToday(animate = true) {
   const now = new Date();
@@ -130,6 +132,8 @@ function renderProgress(mode = 'draw') {
   od['s-max'].set(w(st.max), { roll, delay: 80 });
   od['s-minutes'].set(fmtNum(st.minutes), { roll });
   od['s-sessions'].set(fmtNum(st.sessions), { roll, delay: 40 });
+  $('#sport-more-label').textContent = st.sessions ? `Voir ${st.sessions > 1 ? `les ${fmtNum(st.sessions)} séances` : 'la séance'}` : 'Aucune séance sur cette période';
+  $('#sport-more').disabled = !st.sessions;
   weightChart.set(weightModel(weights, range), mode);
   sportChart.set(sportModel(workouts, range), mode);
 }
@@ -162,6 +166,18 @@ function rowHtml(e, showDay = false) {
     <span class="row-val">${fmtNum(e.duration)} min${burn != null ? `<small>≈ ${fmtNum(burn)} kcal</small>` : ''}</span></button></li>`;
 }
 
+function groupedHtml(entries) {
+  const groups = [];
+  entries.forEach((e) => {
+    const g = groups[groups.length - 1];
+    if (g && g.date === e.date) g.items.push(e);
+    else groups.push({ date: e.date, items: [e] });
+  });
+  return groups.map((g, i) => `
+    <h3 class="hist-day">${esc(relativeDay(g.date))}</h3>
+    <div class="card hist-group" style="--i:${Math.min(i, 10)}"><ul class="rows">${g.items.map((e) => rowHtml(e)).join('')}</ul></div>`).join('');
+}
+
 function renderHistory() {
   const f = state.histFilter;
   const entries = allEntries().filter((e) => f === 'all' || e.kind === f);
@@ -171,15 +187,7 @@ function renderHistory() {
     return;
   }
   const shown = entries.slice(0, state.histLimit);
-  const groups = [];
-  shown.forEach((e) => {
-    const g = groups[groups.length - 1];
-    if (g && g.date === e.date) g.items.push(e);
-    else groups.push({ date: e.date, items: [e] });
-  });
-  host.innerHTML = groups.map((g, i) => `
-    <h3 class="hist-day">${esc(relativeDay(g.date))}</h3>
-    <div class="card hist-group" style="--i:${Math.min(i, 10)}"><ul class="rows">${g.items.map((e) => rowHtml(e)).join('')}</ul></div>`).join('')
+  host.innerHTML = groupedHtml(shown)
     + (entries.length > shown.length ? '<div class="more-wrap"><button class="btn press" id="hist-more">Afficher plus</button></div>' : '');
 }
 
@@ -195,6 +203,7 @@ function enterTab(i) {
   if (i === 0) renderToday(true);
   if (i === 1) renderProgress('draw');
   if (i === 2) renderHistory();
+  refreshPages();
 }
 
 /* ---------- Onglets et balayage ---------- */
@@ -536,13 +545,219 @@ document.addEventListener('click', (e) => {
     return;
   }
   const row = e.target.closest('.row');
-  if (row) openEntry(row.dataset.kind, row.dataset.id);
+  if (row?.dataset.kind === 'workout') openWorkoutPage(row.dataset.id);
+  else if (row) openEntry(row.dataset.kind, row.dataset.id);
 });
 
 $('#fab').addEventListener('click', () => openAdd('weight'));
 $('#empty-add').addEventListener('click', () => openAdd('weight'));
 $('#empty-demo').addEventListener('click', loadDemo);
 $('#open-settings').addEventListener('click', openSettings);
+
+/* ---------- Pages détaillées ---------- */
+const pagesHost = $('#pages');
+const pageStack = [];
+
+function syncPageInert() {
+  const open = pageStack.length > 0;
+  views.inert = open;
+  $('.dock').inert = open;
+  pageStack.forEach((p, i) => {
+    p.el.inert = i !== pageStack.length - 1;
+    p.el.classList.toggle('covered', i !== pageStack.length - 1);
+  });
+}
+
+function pushPage({ eyebrow, title, render }) {
+  const el = document.createElement('section');
+  el.className = 'page entering';
+  el.setAttribute('aria-label', title);
+  el.innerHTML = `
+    <header class="page-head">
+      <button class="icon-btn press page-back" aria-label="Retour"><svg viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></button>
+      <div class="page-title"><p class="eyebrow">${esc(eyebrow)}</p><h1>${esc(title)}</h1></div>
+    </header>
+    <div class="page-body"></div>`;
+  const page = { el, render, opener: document.activeElement };
+  if (render($('.page-body', el), true) === false) return;
+  $('.page-back', el).onclick = popPage;
+  bindEdgeSwipe(el);
+  pagesHost.append(el);
+  pageStack.push(page);
+  syncPageInert();
+  void el.offsetWidth;
+  el.classList.add('open');
+  $('.page-back', el).focus({ preventScroll: true });
+}
+
+function popPage() {
+  const page = pageStack.pop();
+  if (!page) return;
+  syncPageInert();
+  page.el.classList.remove('open');
+  page.el.style.removeProperty('--page-x');
+  setTimeout(() => page.el.remove(), reduced() ? 0 : 340);
+  if (page.opener?.isConnected) page.opener.focus({ preventScroll: true });
+}
+
+// Après un ajout, une modification ou une suppression.
+function refreshPages() {
+  [...pageStack].forEach((page) => {
+    if (!pageStack.includes(page)) return;
+    if (page.render($('.page-body', page.el), false) === false) {
+      pageStack.splice(pageStack.indexOf(page), 1);
+      page.el.remove();
+    }
+  });
+  syncPageInert();
+}
+
+// Balayage depuis le bord gauche pour revenir en arrière.
+function bindEdgeSwipe(el) {
+  let id = null; let x0 = 0;
+  el.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch' && e.clientX < 28) { id = e.pointerId; x0 = e.clientX; el.classList.add('dragging'); }
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (e.pointerId === id) el.style.setProperty('--page-x', `${Math.max(0, e.clientX - x0)}px`);
+  });
+  const end = (e) => {
+    if (e.pointerId !== id) return;
+    id = null;
+    el.classList.remove('dragging');
+    if (e.type === 'pointerup' && e.clientX - x0 > innerWidth * 0.3) popPage();
+    else el.style.removeProperty('--page-x');
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !sheet.classList.contains('open') && pageStack.length) popPage();
+});
+
+function setOdometer(el, text, roll) {
+  new Odometer(el).set(text, { roll });
+}
+
+function openSessionsPage(from, to, label) {
+  pushPage({
+    eyebrow: label,
+    title: 'Séances',
+    render(body, first) {
+      const list = allEntries().filter((e) => e.kind === 'workout' && e.date >= from && e.date <= to);
+      if (!list.length) {
+        body.innerHTML = '<article class="card"><p class="empty-line">Plus aucune séance sur cette période.</p></article>';
+        return true;
+      }
+      const minutes = list.reduce((s, w) => s + w.duration, 0);
+      const burns = list.map((w) => kcal(w, state.weights)).filter((v) => v != null);
+      const byType = new Map();
+      list.forEach((w) => {
+        const key = TYPES[w.type] ? w.type : 'autre';
+        const t = byType.get(key) || { count: 0, minutes: 0 };
+        t.count += 1; t.minutes += w.duration;
+        byType.set(key, t);
+      });
+      const types = [...byType.entries()].sort((a, b) => b[1].minutes - a[1].minutes);
+      body.innerHTML = `
+        <div class="stat-row page-stats rise">
+          <div><p class="label">Séances</p><span class="num num-md" data-od="${fmtNum(list.length)}"></span></div>
+          <div><p class="label">Minutes</p><span class="num num-md" data-od="${fmtNum(minutes)}"></span></div>
+          <div><p class="label">≈ Kcal</p><span class="num num-md" data-od="${burns.length ? fmtNum(burns.reduce((a, b) => a + b, 0)) : '–'}"></span></div>
+        </div>
+        <article class="card rise" style="--i:1">
+          <div class="card-head"><h2>Par sport</h2><span class="muted">minutes</span></div>
+          <ul class="split">${types.map(([k, t], i) => `
+            <li><span class="split-name"><span class="split-ico">${TYPES[k][1]}</span>${esc(TYPES[k][0])}<small>${fmtNum(t.count)} séance${t.count > 1 ? 's' : ''}</small></span>
+            <b>${fmtNum(t.minutes)}</b>
+            <span class="split-track"><i style="--p:${(t.minutes / types[0][1].minutes).toFixed(3)};--i:${i}"></i></span></li>`).join('')}</ul>
+        </article>
+        ${groupedHtml(list)}`;
+      body.querySelectorAll('[data-od]').forEach((n) => setOdometer(n, n.dataset.od, first));
+      return true;
+    },
+  });
+}
+
+const hoursText = (min) => (min / 60).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+const paceText = (min, km) => {
+  const total = Math.round((min / km) * 60);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+};
+
+function workoutCells(w, burn) {
+  const cells = [['≈ Calories', burn != null ? fmtNum(burn) : '–', 'kcal']];
+  cells.push(['Intensité', usesSpeed(w) ? 'Selon vitesse' : INTENSITIES[w.intensity] || INTENSITIES.mid, '']);
+  if (w.distance) {
+    cells.push(['Distance', fmtNum(w.distance, w.distance % 1 ? 1 : 0), 'km']);
+    if (w.type === 'course' || w.type === 'marche') cells.push(['Allure', paceText(w.duration, w.distance), '/km']);
+    else cells.push(['Vitesse', fmtNum(w.distance / (w.duration / 60), 1), 'km/h']);
+  }
+  if (w.load) cells.push(['Charge', fmtNum(w.load, w.load % 1 ? 1 : 0), 'kg']);
+  return cells;
+}
+
+function previousWorkout(w) {
+  return state.workouts
+    .filter((o) => o.id !== w.id && o.type === w.type && (o.date < w.date || (o.date === w.date && (o.createdAt || 0) < (w.createdAt || 0))))
+    .sort((a, b) => (a.date === b.date ? (b.createdAt || 0) - (a.createdAt || 0) : a.date < b.date ? 1 : -1))[0];
+}
+
+function compareRows(w, prev) {
+  const rows = [['Durée', w.duration - prev.duration, 'min', 0]];
+  const a = kcal(w, state.weights);
+  const b = kcal(prev, state.weights);
+  if (a != null && b != null) rows.push(['Calories', a - b, 'kcal', 0]);
+  if (w.distance && prev.distance) rows.push(['Distance', w.distance - prev.distance, 'km', 1]);
+  if (w.load && prev.load) rows.push(['Charge', w.load - prev.load, 'kg', 1]);
+  return rows.map(([name, d, unit, dec]) => `<li><span>${name}</span><b>${Math.abs(d) < 0.05 ? '=' : `${fmtSigned(d, dec)} ${unit}`}</b></li>`).join('');
+}
+
+function openWorkoutPage(id) {
+  const initial = state.workouts.find((r) => r.id === id);
+  if (!initial) return;
+  const [name] = TYPES[initial.type] || TYPES.autre;
+  pushPage({
+    eyebrow: longDate(initial.date),
+    title: name,
+    render(body, first) {
+      const w = state.workouts.find((r) => r.id === id);
+      if (!w) return false;
+      const burn = kcal(w, state.weights);
+      const kg = weightOn(state.weights, w.date);
+      const prev = previousWorkout(w);
+      const [, icon] = TYPES[w.type] || TYPES.autre;
+      body.innerHTML = `
+        <article class="card detail-hero rise">
+          <span class="detail-ico">${icon}</span>
+          <p class="label">Durée</p>
+          <div class="big-line"><span class="num num-xl" data-od="${fmtNum(w.duration)}"></span><span class="unit">min</span></div>
+        </article>
+        <div class="detail-grid rise" style="--i:1">${workoutCells(w, burn).map(([label, val, unit]) => `
+          <div class="card detail-cell"><p class="label">${label}</p><p class="detail-val">${val}${unit ? ` <small>${unit}</small>` : ''}</p></div>`).join('')}</div>
+        ${burn != null ? `<article class="card rise" style="--i:2">
+          <div class="card-head"><h2>Calcul des calories</h2></div>
+          <p class="formula">${fmtNum(metFor(w), 1)} MET × ${fmtNum(kg, 1)} kg × ${hoursText(w.duration)} h</p>
+          <p class="foot">Estimation moyenne, pas une mesure.</p>
+        </article>` : ''}
+        ${prev ? `<article class="card rise" style="--i:3">
+          <div class="card-head"><h2>Séance précédente</h2></div>
+          <ul class="rows">${rowHtml({ kind: 'workout', ...prev }, true)}</ul>
+          <ul class="compare">${compareRows(w, prev)}</ul>
+        </article>` : ''}
+        <button class="btn btn-block press rise" style="--i:4" id="page-edit">Modifier la séance</button>`;
+      $('#page-edit', body).onclick = () => openAdd('workout', state.workouts.find((r) => r.id === id));
+      body.querySelectorAll('[data-od]').forEach((n) => setOdometer(n, n.dataset.od, first));
+      return true;
+    },
+  });
+}
+
+$('#sport-more').addEventListener('click', () => {
+  const { from, to, label } = rangeBounds(state.range);
+  openSessionsPage(from, to, label);
+});
 
 /* ---------- Toast ---------- */
 const toastEl = $('#toast');
